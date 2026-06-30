@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Índices{% endblock %}
+{% block topbar_title %}Índices de Correção Monetária{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary" onclick="abrirNovoIndice()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    Novo Índice
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<div style="background:var(--info-bg);border:1px solid rgba(26,82,118,.2);border-radius:var(--radius);padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--info);">
+  <strong>Tabela de Referência:</strong> Índices utilizados para atualização dos valores de cobrança conforme IPCA, SELIC, INPC e BACEN Série 29541 (TJSP).
+</div>
+
+<div class="search-bar">
+  <div class="search-input-wrap">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <input type="search" id="filtro-ano-busca" placeholder="Filtrar por mês/ano (ex.: 2024)">
+  </div>
+  <button class="btn btn-outline" onclick="buscarIndices(1)">Filtrar</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Índices Mensais</div>
+    <span id="total-indices" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Mês/Ano</th>
+          <th>UFESP</th>
+          <th>SELIC (% a.m.)</th>
+          <th>SELIC Acumulada</th>
+          <th>SELIC Ac. Set/2024+</th>
+          <th>JRS Fixos</th>
+          <th>INPC</th>
+          <th>IPCA-15</th>
+          <th>INPC + IPCA-15</th>
+          <th>BACEN Série 29541</th>
+          <th style="text-align:center;width:80px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-indices">
+        <tr class="loading-row"><td colspan="12">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="paginacao-indices" class="pagination"></div>
+</div>
+
+<!-- Modal Índice -->
+<div class="modal-overlay" id="modal-indice">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-indice-titulo">Novo Índice</div>
+      <button class="modal-close" data-close-modal="modal-indice">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="indice-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Data de Referência *</label>
+          <input type="date" id="idx-data" required>
+        </div>
+        <div class="form-group">
+          <label>Mês/Ano</label>
+          <input type="text" id="idx-mes-ano" placeholder="Ex.: 01/2024">
+        </div>
+        <div class="form-group">
+          <label>UFESP</label>
+          <input type="number" step="0.000001" id="idx-ufesp" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>SELIC (% a.m.)</label>
+          <input type="number" step="0.000001" id="idx-selic" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>SELIC Acumulada</label>
+          <input type="number" step="0.00000001" id="idx-selic-ac" placeholder="0.00000000">
+        </div>
+        <div class="form-group">
+          <label>SELIC Ac. Set/2024+</label>
+          <input type="number" step="0.00000001" id="idx-selic-ac-set24" placeholder="0.00000000">
+        </div>
+        <div class="form-group">
+          <label>SELIC menos Correção</label>
+          <input type="number" step="0.000001" id="idx-selic-menos" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>JRS Fixos</label>
+          <input type="number" step="0.000001" id="idx-jrs-fixos" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>INPC</label>
+          <input type="number" step="0.000001" id="idx-inpc" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>IPCA-15</label>
+          <input type="number" step="0.000001" id="idx-ipca15" placeholder="0.000000">
+        </div>
+        <div class="form-group">
+          <label>INPC + IPCA-15</label>
+          <input type="number" step="0.00000001" id="idx-inpc-ipca15" placeholder="0.00000000">
+        </div>
+        <div class="form-group">
+          <label>BACEN Série 29541</label>
+          <input type="number" step="0.00000001" id="idx-bacen" placeholder="0.00000000">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-indice">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarIndice()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let paginaIndiceAtual = 1;
+
+async function buscarIndices(pg = 1) {
+  paginaIndiceAtual = pg;
+  const q = document.getElementById('filtro-ano-busca').value.trim();
+  const tbody = document.getElementById('tbody-indices');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="12"><span class="spinner"></span> Carregando...</td></tr>';
+
+  const ano = q.match(/\d{4}/) ? q.match(/\d{4}/)[0] : '';
+
+  try {
+    const data = await apiGet(`/api/indices?page=${pg}&ano=${ano}`);
+    document.getElementById('total-indices').textContent = `${data.total} registro(s)`;
+
+    if (!data.items.length) { tbody.innerHTML = emptyRow(12,'Nenhum índice cadastrado.'); return; }
+
+    tbody.innerHTML = data.items.map(idx => `
+      <tr>
+        <td>${fmtData(idx.data)}</td>
+        <td><strong>${escHtml(idx.mes_ano||'')}</strong></td>
+        <td>${fmtIndice(idx.ufesp)}</td>
+        <td>${fmtPct6(idx.selic)}</td>
+        <td>${fmtIndice(idx.selic_acumulada)}</td>
+        <td>${fmtIndice(idx.selic_acumulada_set2024)}</td>
+        <td>${fmtPct6(idx.jrs_fixos)}</td>
+        <td>${fmtPct6(idx.inpc)}</td>
+        <td>${fmtPct6(idx.ipca15)}</td>
+        <td>${fmtIndice(idx.inpc_ipca15)}</td>
+        <td>${fmtIndice(idx.bacen_serie29541)}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-outline btn-xs" onclick="editarIndice(${idx.id})" title="Editar">✏️</button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPaginacao(document.getElementById('paginacao-indices'), pg, data.paginas, buscarIndices);
+  } catch(e) {
+    tbody.innerHTML = emptyRow(12,'Erro ao carregar índices.');
+    toast(e.message,'error');
+  }
+}
+
+function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtIndice(v) { if (!v) return '—'; return Number(v).toFixed(8).replace('.',','); }
+function fmtPct6(v) { if (!v) return '—'; return Number(v).toFixed(6).replace('.',',') + '%'; }
+
+function abrirNovoIndice() {
+  document.getElementById('modal-indice-titulo').textContent = 'Novo Índice';
+  document.getElementById('indice-id').value = '';
+  ['idx-data','idx-mes-ano','idx-ufesp','idx-selic','idx-selic-ac','idx-selic-ac-set24',
+   'idx-selic-menos','idx-jrs-fixos','idx-inpc','idx-ipca15','idx-inpc-ipca15','idx-bacen'
+  ].forEach(id => { document.getElementById(id).value = ''; });
+  openModal('modal-indice');
+}
+
+async function editarIndice(id) {
+  try {
+    const data = await apiGet(`/api/indices?page=1&per_page=500`);
+    const idx = data.items.find(x => x.id == id);
+    if (!idx) { toast('Índice não encontrado.','error'); return; }
+    document.getElementById('modal-indice-titulo').textContent = 'Editar Índice';
+    document.getElementById('indice-id').value = id;
+    document.getElementById('idx-data').value = idx.data||'';
+    document.getElementById('idx-mes-ano').value = idx.mes_ano||'';
+    document.getElementById('idx-ufesp').value = idx.ufesp||'';
+    document.getElementById('idx-selic').value = idx.selic||'';
+    document.getElementById('idx-selic-ac').value = idx.selic_acumulada||'';
+    document.getElementById('idx-selic-ac-set24').value = idx.selic_acumulada_set2024||'';
+    document.getElementById('idx-inpc').value = idx.inpc||'';
+    document.getElementById('idx-ipca15').value = idx.ipca15||'';
+    document.getElementById('idx-inpc-ipca15').value = idx.inpc_ipca15||'';
+    document.getElementById('idx-bacen').value = idx.bacen_serie29541||'';
+    openModal('modal-indice');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function salvarIndice() {
+  const id = document.getElementById('indice-id').value;
+  const payload = {
+    data: document.getElementById('idx-data').value,
+    mes_ano: document.getElementById('idx-mes-ano').value,
+    ufesp: document.getElementById('idx-ufesp').value||null,
+    selic: document.getElementById('idx-selic').value||null,
+    selic_acumulada: document.getElementById('idx-selic-ac').value||null,
+    selic_acumulada_set2024: document.getElementById('idx-selic-ac-set24').value||null,
+    selic_menos_correcao: document.getElementById('idx-selic-menos').value||null,
+    jrs_fixos: document.getElementById('idx-jrs-fixos').value||null,
+    inpc: document.getElementById('idx-inpc').value||null,
+    ipca15: document.getElementById('idx-ipca15').value||null,
+    inpc_ipca15: document.getElementById('idx-inpc-ipca15').value||null,
+    bacen_serie29541: document.getElementById('idx-bacen').value||null,
+  };
+  if (!payload.data) { toast('Informe a data de referência.','warning'); return; }
+
+  try {
+    if (id) { await apiPut(`/api/indices/${id}`, payload); toast('Índice atualizado.','success'); }
+    else     { await apiPost('/api/indices', payload); toast('Índice cadastrado.','success'); }
+    closeModal('modal-indice');
+    buscarIndices(paginaIndiceAtual);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+buscarIndices(1);
+</script>
+{% endblock %}

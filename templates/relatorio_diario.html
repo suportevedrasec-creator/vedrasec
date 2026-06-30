@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório Diário{% endblock %}
+{% block topbar_title %}Relatório Diário de Acordos{% endblock %}
+
+{% block content %}
+
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><div class="card-title">Filtros</div></div>
+  <div class="card-body">
+    <div class="form-row" style="align-items:flex-end;">
+      <div class="form-group">
+        <label>Data Início</label>
+        <input type="date" id="rel-dt-inicio">
+      </div>
+      <div class="form-group">
+        <label>Data Fim</label>
+        <input type="date" id="rel-dt-fim">
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="gerarRelatorio()">Gerar Relatório</button>
+        <button class="btn btn-outline" onclick="exportarCSV()" style="margin-left:8px;">Exportar CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sumário -->
+<div id="sumario" style="display:none;" class="kpi-grid" style="margin-bottom:20px;"></div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Movimentações no Período</div>
+    <span id="total-rel" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="table-wrapper">
+    <table id="tabela-relatorio">
+      <thead>
+        <tr>
+          <th>Data Acordo</th>
+          <th>Origem</th>
+          <th>CPF/CNPJ</th>
+          <th>Devedor</th>
+          <th>Grupo</th>
+          <th>Contrato</th>
+          <th>Modalidade Bacen</th>
+          <th>Garantia Real</th>
+          <th>Grupo Cobrança</th>
+          <th>Status Acordo</th>
+          <th>Status Pgto.</th>
+          <th>Nº Parcelas</th>
+          <th>Valor Parcela</th>
+          <th>Valor Recebido</th>
+          <th>Data Recebimento</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-relatorio">
+        <tr class="loading-row"><td colspan="15" style="text-align:center;padding:40px;color:var(--text-muted);">
+          Selecione o período e clique em "Gerar Relatório"
+        </td></tr>
+      </tbody>
+      <tfoot id="tfoot-relatorio"></tfoot>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dadosRelatorio = [];
+
+// Definir datas padrão (mês atual)
+window.addEventListener('DOMContentLoaded', () => {
+  const hoje = new Date();
+  const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  document.getElementById('rel-dt-inicio').value = primeiroDia.toISOString().split('T')[0];
+  document.getElementById('rel-dt-fim').value = hoje.toISOString().split('T')[0];
+});
+
+function escHtml(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function gerarRelatorio() {
+  const inicio = document.getElementById('rel-dt-inicio').value;
+  const fim = document.getElementById('rel-dt-fim').value;
+  const tbody = document.getElementById('tbody-relatorio');
+  tbody.innerHTML = `<tr class="loading-row"><td colspan="15"><span class="spinner"></span> Gerando...</td></tr>`;
+
+  try {
+    const data = await apiGet(`/api/relatorio-diario?data_inicio=${inicio}&data_fim=${fim}`);
+    dadosRelatorio = data.items;
+    document.getElementById('total-rel').textContent = `${data.items.length} registro(s)`;
+
+    if (!data.items.length) {
+      tbody.innerHTML = `<tr class="loading-row"><td colspan="15">Nenhum registro no período selecionado.</td></tr>`;
+      document.getElementById('tfoot-relatorio').innerHTML = '';
+      document.getElementById('sumario').style.display = 'none';
+      return;
+    }
+
+    tbody.innerHTML = data.items.map(r => `
+      <tr>
+        <td>${fmtData(r.data_acordo)}</td>
+        <td>${escHtml(r.origem_acordo||'—')}</td>
+        <td><code style="font-size:11px;">${escHtml(r.cpf_cnpj||'—')}</code></td>
+        <td style="font-weight:600;color:var(--navy);">${escHtml(r.devedor_nome)}</td>
+        <td>${escHtml(r.grupo||'—')}</td>
+        <td><code style="font-size:11px;">${escHtml(r.numero_contrato||'—')}</code></td>
+        <td>${escHtml(r.modalidade||'—')}</td>
+        <td style="font-size:12px;">${escHtml(r.garantia_real||'—')}</td>
+        <td>${escHtml(r.grupo_cobranca||'—')}</td>
+        <td>${statusBadge(r.status_acordo)}</td>
+        <td>${statusBadge(r.status_pagamento)}</td>
+        <td style="text-align:center;">${r.n_parcelas||'—'}</td>
+        <td>${fmtMoeda(r.valor_parcela)}</td>
+        <td class="currency-positive">${fmtMoeda(r.valor_recebido)}</td>
+        <td>${fmtData(r.data_recebimento)}</td>
+      </tr>
+    `).join('');
+
+    // Totais
+    const totalRecebido = data.items.reduce((s, r) => s + (r.valor_recebido||0), 0);
+    document.getElementById('tfoot-relatorio').innerHTML = `
+      <tr>
+        <td colspan="13" style="text-align:right;font-weight:600;">Total Recebido no Período:</td>
+        <td class="currency-positive" style="font-size:1.05rem;">${fmtMoeda(totalRecebido)}</td>
+        <td></td>
+      </tr>
+    `;
+
+    // Sumário
+    const totalAcordos = data.items.length;
+    const quitados = data.items.filter(r => r.status_pagamento?.toLowerCase().includes('quitad')).length;
+    const emAndamento = data.items.filter(r => r.status_acordo?.toLowerCase().includes('andamento')).length;
+
+    document.getElementById('sumario').style.display = 'grid';
+    document.getElementById('sumario').innerHTML = `
+      <div class="kpi-card">
+        <div class="kpi-label">Total de Acordos</div>
+        <div class="kpi-value">${totalAcordos}</div>
+        <div class="kpi-sub">no período</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Quitados</div>
+        <div class="kpi-value" style="color:var(--success)">${quitados}</div>
+        <div class="kpi-sub">pagamentos quitados</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Em Andamento</div>
+        <div class="kpi-value" style="color:var(--warning)">${emAndamento}</div>
+        <div class="kpi-sub">acordos ativos</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Recebido</div>
+        <div class="kpi-value" style="font-size:1.3rem;color:var(--success)">${fmtMoeda(totalRecebido)}</div>
+        <div class="kpi-sub">valor consolidado</div>
+      </div>
+    `;
+
+  } catch(e) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="15">Erro ao gerar relatório: ${escHtml(e.message)}</td></tr>`;
+    toast(e.message, 'error');
+  }
+}
+
+function exportarCSV() {
+  if (!dadosRelatorio.length) { toast('Gere o relatório primeiro.','warning'); return; }
+  const cabecalho = ['Data Acordo','Origem','CPF/CNPJ','Devedor','Grupo','Contrato','Modalidade','Garantia Real','Grupo Cobrança','Status Acordo','Status Pgto.','Nº Parcelas','Valor Parcela','Valor Recebido','Data Recebimento'];
+  const linhas = dadosRelatorio.map(r => [
+    r.data_acordo||'',r.origem_acordo||'',r.cpf_cnpj||'',r.devedor_nome||'',r.grupo||'',
+    r.numero_contrato||'',r.modalidade||'',r.garantia_real||'',r.grupo_cobranca||'',
+    r.status_acordo||'',r.status_pagamento||'',r.n_parcelas||'',
+    (r.valor_parcela||0).toFixed(2),(r.valor_recebido||0).toFixed(2),r.data_recebimento||''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`));
+
+  const csv = [cabecalho.join(';'), ...linhas.map(l => l.join(';'))].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `relatorio_diario_${document.getElementById('rel-dt-inicio').value}_${document.getElementById('rel-dt-fim').value}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

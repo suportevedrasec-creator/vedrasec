@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastros{% endblock %}
+{% block topbar_title %}Base Geral — Cadastros{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary" onclick="abrirModalNovoDevedor()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    Novo Devedor
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Busca -->
+<div class="search-bar">
+  <div class="search-input-wrap">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <input type="search" id="busca-devedor" placeholder="Buscar por nome, CPF/CNPJ ou grupo...">
+  </div>
+  <select id="filtro-regional" style="width:180px;">
+    <option value="">Todas as Regionais</option>
+    <option>SERTÃOZINHO</option><option>BAURU</option><option>MINAS</option>
+    <option>SÃO PAULO</option><option>INTERIOR</option>
+  </select>
+  <button class="btn btn-outline" onclick="buscarDevedores(1)">Filtrar</button>
+</div>
+
+<!-- Tabela Devedores -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Devedores Cadastrados</div>
+    <span id="total-label" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome / Devedor</th>
+          <th>CPF / CNPJ</th>
+          <th>Grupo</th>
+          <th>Regional</th>
+          <th>PA</th>
+          <th>Contratos</th>
+          <th>Valor Total Atualiz.</th>
+          <th style="width:110px;text-align:center;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-devedores">
+        <tr class="loading-row"><td colspan="8">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="paginacao-devedores" class="pagination"></div>
+</div>
+
+<!-- Modal Novo/Editar Devedor -->
+<div class="modal-overlay" id="modal-devedor">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-devedor-titulo">Novo Devedor</div>
+      <button class="modal-close" data-close-modal="modal-devedor">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <form id="form-devedor" class="modal-body">
+      <input type="hidden" id="devedor-id">
+      <div class="form-row">
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Nome Completo / Razão Social *</label>
+          <input type="text" id="dev-nome" required placeholder="Ex.: João da Silva">
+        </div>
+        <div class="form-group">
+          <label>CPF / CNPJ</label>
+          <input type="text" id="dev-cpf-cnpj" placeholder="000.000.000-00">
+        </div>
+        <div class="form-group">
+          <label>Grupo</label>
+          <input type="text" id="dev-grupo" placeholder="Nome do grupo">
+        </div>
+        <div class="form-group">
+          <label>Regional</label>
+          <select id="dev-regional">
+            <option value="">Selecione...</option>
+            <option>SERTÃOZINHO</option><option>BAURU</option><option>MINAS</option>
+            <option>SÃO PAULO</option><option>INTERIOR</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>PA</label>
+          <input type="text" id="dev-pa" placeholder="Ponto de Atendimento">
+        </div>
+        <div class="form-group">
+          <label>Última Atualização</label>
+          <input type="date" id="dev-data-atualizacao">
+        </div>
+      </div>
+    </form>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-devedor">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarDevedor()">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:15px;height:15px;"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h11.17L19 7.83V19zm-7-7c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zM6 6h9v4H6z"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhe / Contratos -->
+<div class="modal-overlay" id="modal-contratos">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-contratos-titulo">Contratos do Devedor</div>
+      <button class="modal-close" data-close-modal="modal-contratos">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="detalhe-devedor"></div>
+      <div class="tab-bar" style="margin-top:20px;">
+        <button class="tab-btn active" onclick="mudarTab(this,'tab-contratos')">Contratos</button>
+      </div>
+      <div id="tab-contratos">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+          <button class="btn btn-primary btn-sm" onclick="abrirModalNovoContrato()">
+            + Novo Contrato
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Nº Contrato</th><th>Modalidade</th><th>Vl. Contratado</th>
+                <th>Vl. Prejuízo</th><th>Vl. Atualizado</th><th>Vl. Lei 14.905</th>
+                <th>Garantia Real</th><th>Grupo Cobrança</th><th>Esteira</th>
+                <th style="text-align:center;width:100px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-contratos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-contratos">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Novo Contrato -->
+<div class="modal-overlay" id="modal-novo-contrato">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-contrato-titulo">Novo Contrato</div>
+      <button class="modal-close" data-close-modal="modal-novo-contrato">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;max-height:70vh;">
+      <input type="hidden" id="contrato-devedor-id">
+      <input type="hidden" id="contrato-id">
+
+      <div class="form-section-title">Identificação</div>
+      <div class="form-row">
+        <div class="form-group"><label>Nº Contrato</label><input type="text" id="c-numero"></div>
+        <div class="form-group"><label>Nº Cliente</label><input type="text" id="c-cliente"></div>
+        <div class="form-group"><label>Modalidade Bacen</label><input type="text" id="c-mod-bacen"></div>
+        <div class="form-group"><label>Modalidade</label><input type="text" id="c-modalidade"></div>
+        <div class="form-group"><label>Subdivisão</label><input type="text" id="c-subdivisao"></div>
+        <div class="form-group"><label>Grupo de Cobrança</label><input type="text" id="c-grupo-cobranca"></div>
+      </div>
+
+      <div class="form-section-title">Valores Financeiros</div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor Contratado (R$)</label><input type="number" step="0.01" id="c-vl-contratado" placeholder="0,00"></div>
+        <div class="form-group"><label>Valor Prejuízo (R$)</label><input type="number" step="0.01" id="c-vl-prejuizo" placeholder="0,00"></div>
+        <div class="form-group"><label>Valor Pago SEC (R$)</label><input type="number" step="0.01" id="c-vl-pago-sec" placeholder="0,00"></div>
+      </div>
+
+      <div class="form-section-title">Valores Atualizados</div>
+      <div class="form-row">
+        <div class="form-group"><label>Data-Base</label><input type="date" id="c-data-base"></div>
+        <div class="form-group"><label>Índice 1%</label><input type="number" step="0.000001" id="c-indice-1pct" placeholder="0,000000"></div>
+        <div class="form-group"><label>Índice Final</label><input type="number" step="0.000001" id="c-indice-final" placeholder="0,000000"></div>
+        <div class="form-group"><label>Vl. Corrigido IPCA (R$)</label><input type="number" step="0.01" id="c-vl-corrigido-ipca"></div>
+        <div class="form-group"><label>Juros de Mora (R$)</label><input type="number" step="0.01" id="c-juros-mora"></div>
+        <div class="form-group"><label>Honorários 10% (R$)</label><input type="number" step="0.01" id="c-honorarios"></div>
+        <div class="form-group"><label>Vl. Atualizado Simples (R$)</label><input type="number" step="0.01" id="c-vl-atualizado"></div>
+        <div class="form-group"><label>Vl. Atualizado Lei 14.905 (R$)</label><input type="number" step="0.01" id="c-vl-lei14905"></div>
+      </div>
+
+      <div class="form-section-title">Datas</div>
+      <div class="form-row">
+        <div class="form-group"><label>Data Liberação</label><input type="date" id="c-dt-liberacao"></div>
+        <div class="form-group"><label>Data Vencimento</label><input type="date" id="c-dt-vencimento"></div>
+        <div class="form-group"><label>Data Transf. Prejuízo</label><input type="date" id="c-dt-transf"></div>
+      </div>
+
+      <div class="form-section-title">Garantias</div>
+      <div class="form-row">
+        <div class="form-group"><label>Garantia Real</label><input type="text" id="c-garantia-real"></div>
+        <div class="form-group"><label>Garantia Pessoal</label><input type="text" id="c-garantia-pessoal"></div>
+        <div class="form-group"><label>Capital Social (R$)</label><input type="number" step="0.01" id="c-capital-social"></div>
+        <div class="form-group" style="grid-column:span 2;"><label>Descrição das Garantias</label><textarea id="c-desc-garantia" rows="2"></textarea></div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
+          <input type="checkbox" id="c-negativado" style="width:auto;">
+          <label style="text-transform:none;font-size:13px;margin-bottom:0;">Devedor Negativado</label>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:22px;">
+          <input type="checkbox" id="c-na-esteira" style="width:auto;">
+          <label style="text-transform:none;font-size:13px;margin-bottom:0;">Incluir na Esteira</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-novo-contrato">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarContrato()">Salvar Contrato</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let devedorAtualId = null;
+let paginaAtual = 1;
+
+async function buscarDevedores(pg = 1) {
+  paginaAtual = pg;
+  const q = document.getElementById('busca-devedor').value;
+  const reg = document.getElementById('filtro-regional').value;
+  const tbody = document.getElementById('tbody-devedores');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><span class="spinner"></span> Carregando...</td></tr>';
+
+  try {
+    const data = await apiGet(`/api/devedores?page=${pg}&q=${encodeURIComponent(q)}&regional=${encodeURIComponent(reg)}`);
+    document.getElementById('total-label').textContent = `${data.total} registro(s)`;
+
+    if (!data.items.length) {
+      tbody.innerHTML = emptyRow(8);
+      document.getElementById('paginacao-devedores').innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = data.items.map(d => `
+      <tr>
+        <td class="td-name">
+          <a href="#" onclick="verContratos(${d.id},'${escHtml(d.nome)}')" style="color:var(--navy);text-decoration:none;font-weight:600;">${escHtml(d.nome)}</a>
+        </td>
+        <td><code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">${escHtml(d.cpf_cnpj||'—')}</code></td>
+        <td>${escHtml(d.grupo||'—')}</td>
+        <td>${escHtml(d.regional||'—')}</td>
+        <td>${escHtml(d.pa||'—')}</td>
+        <td style="text-align:center;">${d.total_contratos}</td>
+        <td class="currency-positive">${fmtMoeda(d.valor_total)}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-outline btn-xs" onclick="editarDevedor(${d.id})" title="Editar">✏️</button>
+          <button class="btn btn-danger-sm btn-xs" onclick="excluirDevedor(${d.id})" title="Excluir">🗑</button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPaginacao(document.getElementById('paginacao-devedores'), pg, data.paginas, buscarDevedores);
+  } catch(e) {
+    tbody.innerHTML = emptyRow(8, 'Erro ao carregar dados.');
+    toast(e.message, 'error');
+  }
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function abrirModalNovoDevedor() {
+  document.getElementById('modal-devedor-titulo').textContent = 'Novo Devedor';
+  document.getElementById('devedor-id').value = '';
+  ['dev-nome','dev-cpf-cnpj','dev-grupo','dev-pa','dev-data-atualizacao'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('dev-regional').value = '';
+  openModal('modal-devedor');
+}
+
+async function editarDevedor(id) {
+  try {
+    const data = await apiGet(`/api/devedores/${id}`);
+    const d = data.devedor;
+    document.getElementById('modal-devedor-titulo').textContent = 'Editar Devedor';
+    document.getElementById('devedor-id').value = d.id;
+    document.getElementById('dev-nome').value = d.nome||'';
+    document.getElementById('dev-cpf-cnpj').value = d.cpf_cnpj||'';
+    document.getElementById('dev-grupo').value = d.grupo||'';
+    document.getElementById('dev-regional').value = d.regional||'';
+    document.getElementById('dev-pa').value = d.pa||'';
+    document.getElementById('dev-data-atualizacao').value = d.data_ultima_atualizacao||'';
+    openModal('modal-devedor');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function salvarDevedor() {
+  const id = document.getElementById('devedor-id').value;
+  const payload = {
+    nome: document.getElementById('dev-nome').value.trim(),
+    cpf_cnpj: document.getElementById('dev-cpf-cnpj').value.trim(),
+    grupo: document.getElementById('dev-grupo').value.trim(),
+    regional: document.getElementById('dev-regional').value,
+    pa: document.getElementById('dev-pa').value.trim(),
+    data_ultima_atualizacao: document.getElementById('dev-data-atualizacao').value || null,
+  };
+  if (!payload.nome) { toast('Nome é obrigatório.', 'warning'); return; }
+  try {
+    if (id) { await apiPut(`/api/devedores/${id}`, payload); toast('Devedor atualizado.', 'success'); }
+    else     { await apiPost('/api/devedores', payload); toast('Devedor cadastrado.', 'success'); }
+    closeModal('modal-devedor');
+    buscarDevedores(paginaAtual);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function excluirDevedor(id) {
+  if (!confirmar('Tem certeza que deseja excluir este devedor e todos os seus contratos?')) return;
+  try {
+    await apiDelete(`/api/devedores/${id}`);
+    toast('Devedor removido.', 'success');
+    buscarDevedores(paginaAtual);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function verContratos(devedorId, nome) {
+  devedorAtualId = devedorId;
+  document.getElementById('modal-contratos-titulo').textContent = nome;
+  openModal('modal-contratos');
+  await carregarContratos(devedorId);
+}
+
+async function carregarContratos(devedorId) {
+  const tbody = document.getElementById('tbody-contratos');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="10">Carregando...</td></tr>';
+  try {
+    const data = await apiGet(`/api/contratos?devedor_id=${devedorId}&per_page=50`);
+    if (!data.items.length) { tbody.innerHTML = emptyRow(10, 'Nenhum contrato cadastrado.'); return; }
+    tbody.innerHTML = data.items.map(c => `
+      <tr>
+        <td><code style="font-size:12px;">${escHtml(c.numero_contrato||'—')}</code></td>
+        <td>${escHtml(c.modalidade||'—')}</td>
+        <td>${fmtMoeda(c.valor_contratado)}</td>
+        <td>${fmtMoeda(c.valor_prejuizo)}</td>
+        <td class="currency-positive">${fmtMoeda(c.valor_atualizado_simples)}</td>
+        <td class="currency-positive">${fmtMoeda(c.valor_atualizado_lei14905)}</td>
+        <td>${escHtml(c.garantia_real||'—')}</td>
+        <td>${escHtml(c.grupo_cobranca||'—')}</td>
+        <td style="text-align:center;">${c.na_esteira ? '<span class="badge badge-info">Sim</span>' : '<span class="badge badge-muted">Não</span>'}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-outline btn-xs" onclick="editarContrato(${c.id})" title="Editar">✏️</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { tbody.innerHTML = emptyRow(10,'Erro ao carregar contratos.'); toast(e.message,'error'); }
+}
+
+function abrirModalNovoContrato() {
+  document.getElementById('modal-contrato-titulo').textContent = 'Novo Contrato';
+  document.getElementById('contrato-id').value = '';
+  document.getElementById('contrato-devedor-id').value = devedorAtualId;
+  ['c-numero','c-cliente','c-mod-bacen','c-modalidade','c-subdivisao','c-grupo-cobranca',
+   'c-vl-contratado','c-vl-prejuizo','c-vl-pago-sec','c-data-base','c-indice-1pct','c-indice-final',
+   'c-vl-corrigido-ipca','c-juros-mora','c-honorarios','c-vl-atualizado','c-vl-lei14905',
+   'c-dt-liberacao','c-dt-vencimento','c-dt-transf','c-garantia-real','c-garantia-pessoal',
+   'c-capital-social','c-desc-garantia'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('c-negativado').checked = false;
+  document.getElementById('c-na-esteira').checked = false;
+  openModal('modal-novo-contrato');
+}
+
+async function editarContrato(id) {
+  try {
+    const data = await apiGet(`/api/contratos/${id}`);
+    const c = data;
+    document.getElementById('modal-contrato-titulo').textContent = 'Editar Contrato';
+    document.getElementById('contrato-id').value = c.id;
+    document.getElementById('contrato-devedor-id').value = c.devedor_id;
+    document.getElementById('c-numero').value = c.numero_contrato||'';
+    document.getElementById('c-vl-contratado').value = c.valor_contratado||'';
+    document.getElementById('c-vl-prejuizo').value = c.valor_prejuizo||'';
+    document.getElementById('c-vl-pago-sec').value = c.valor_pago_sec||'';
+    document.getElementById('c-vl-atualizado').value = c.valor_atualizado_simples||'';
+    document.getElementById('c-vl-lei14905').value = c.valor_atualizado_lei14905||'';
+    document.getElementById('c-modalidade').value = c.modalidade||'';
+    document.getElementById('c-mod-bacen').value = c.modalidade_bacen||'';
+    document.getElementById('c-garantia-real').value = c.garantia_real||'';
+    document.getElementById('c-garantia-pessoal').value = c.garantia_pessoal||'';
+    document.getElementById('c-grupo-cobranca').value = c.grupo_cobranca||'';
+    document.getElementById('c-negativado').checked = c.devedor_negativado||false;
+    document.getElementById('c-na-esteira').checked = c.na_esteira||false;
+    openModal('modal-novo-contrato');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function salvarContrato() {
+  const id = document.getElementById('contrato-id').value;
+  const payload = {
+    devedor_id: parseInt(document.getElementById('contrato-devedor-id').value),
+    numero_contrato: document.getElementById('c-numero').value,
+    numero_cliente: document.getElementById('c-cliente').value,
+    modalidade_bacen: document.getElementById('c-mod-bacen').value,
+    modalidade: document.getElementById('c-modalidade').value,
+    subdivisao: document.getElementById('c-subdivisao').value,
+    grupo_cobranca: document.getElementById('c-grupo-cobranca').value,
+    valor_contratado: document.getElementById('c-vl-contratado').value||null,
+    valor_prejuizo: document.getElementById('c-vl-prejuizo').value||null,
+    valor_pago_sec: document.getElementById('c-vl-pago-sec').value||null,
+    data_base: document.getElementById('c-data-base').value||null,
+    indice_1pct: document.getElementById('c-indice-1pct').value||null,
+    indice_final: document.getElementById('c-indice-final').value||null,
+    valor_corrigido_ipca: document.getElementById('c-vl-corrigido-ipca').value||null,
+    juros_mora_simples: document.getElementById('c-juros-mora').value||null,
+    honorarios_simples: document.getElementById('c-honorarios').value||null,
+    valor_atualizado_simples: document.getElementById('c-vl-atualizado').value||null,
+    valor_atualizado_lei14905: document.getElementById('c-vl-lei14905').value||null,
+    data_liberacao: document.getElementById('c-dt-liberacao').value||null,
+    data_vencimento: document.getElementById('c-dt-vencimento').value||null,
+    data_transf_prejuizo: document.getElementById('c-dt-transf').value||null,
+    garantia_real: document.getElementById('c-garantia-real').value,
+    garantia_pessoal: document.getElementById('c-garantia-pessoal').value,
+    descricao_garantia: document.getElementById('c-desc-garantia').value,
+    capital_social: document.getElementById('c-capital-social').value||null,
+    devedor_negativado: document.getElementById('c-negativado').checked,
+    na_esteira: document.getElementById('c-na-esteira').checked,
+  };
+  try {
+    if (id) { await apiPut(`/api/contratos/${id}`, payload); toast('Contrato atualizado.','success'); }
+    else     { await apiPost('/api/contratos', payload); toast('Contrato cadastrado.','success'); }
+    closeModal('modal-novo-contrato');
+    await carregarContratos(devedorAtualId);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function mudarTab(btn, tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Busca com debounce
+let debTimer;
+document.getElementById('busca-devedor').addEventListener('input', () => {
+  clearTimeout(debTimer);
+  debTimer = setTimeout(() => buscarDevedores(1), 350);
+});
+
+buscarDevedores(1);
+</script>
+{% endblock %}

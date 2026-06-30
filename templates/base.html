@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Vedra SEC{% endblock %} — Sistema de Cobrança</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231D2E50'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' dominant-baseline='middle' font-family='serif' font-size='18' font-weight='bold' fill='%23B8973A'%3EV%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="{{ url_for('dashboard') }}">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5L12 1zm0 4.23l5 2.22v4.43c0 3.52-2.33 6.79-5 7.93-2.67-1.14-5-4.41-5-7.93V7.45l5-2.22z"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">Vedra SEC</div>
+          <div class="brand-sub">Gestão de Cobrança</div>
+        </div>
+      </div>
+    </a>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item" href="{{ url_for('dashboard') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        Dashboard
+      </a>
+
+      <div class="nav-section-label">Carteira</div>
+      <a class="nav-item" href="{{ url_for('cadastros') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        Cadastros
+      </a>
+      <a class="nav-item" href="{{ url_for('esteira') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+        Esteira
+      </a>
+      <a class="nav-item" href="{{ url_for('acordos') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+        Acordos
+      </a>
+
+      <div class="nav-section-label">Financeiro</div>
+      <a class="nav-item" href="{{ url_for('indices') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>
+        Índices
+      </a>
+      <a class="nav-item" href="{{ url_for('relatorio_diario') }}">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-2 8l-2-2-2 2-1-1 2-2-2-2 1-1 2 2 2-2 1 1-2 2 2 2-1 1zm4-1h-3v-1h3v1zm1-3H8v-1h7v1z"/></svg>
+        Relatório Diário
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ current_user.nome[0].upper() if current_user.nome else 'U' }}</div>
+        <div>
+          <div class="user-name">{{ current_user.nome }}</div>
+          <div class="user-role">Usuário</div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn-logout" title="Sair">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Conteúdo -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">{% block topbar_title %}{% endblock %}</div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </div>
+
+    <div class="page-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div style="background:var(--{% if category=='danger' %}danger{% elif category=='success' %}success{% elif category=='warning' %}warning{% else %}info{% endif %}-bg);color:var(--{% if category=='danger' %}danger{% elif category=='success' %}success{% elif category=='warning' %}warning{% else %}info{% endif %});padding:12px 18px;border-radius:var(--radius);margin-bottom:16px;font-size:13.5px;">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acesso — Vedra SEC</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231D2E50'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' dominant-baseline='middle' font-family='serif' font-size='18' font-weight='bold' fill='%23B8973A'%3EV%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5L12 1z"/></svg>
+      </div>
+      <div class="login-logo-text">Vedra SEC</div>
+      <div class="login-sub">Sistema de Gestão de Cobrança</div>
+    </div>
+
+    <div class="login-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div style="background:var(--danger-bg);color:var(--danger);padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" placeholder="seu@email.com.br" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" placeholder="••••••••" required>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="lembrar" name="lembrar" style="width:auto;">
+          <label for="lembrar" style="text-transform:none;font-size:13px;font-weight:400;color:var(--text-muted);cursor:pointer;margin-bottom:0;">Manter conectado</label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-login">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;"><path d="M11 7L9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z"/></svg>
+          Acessar o Sistema
+        </button>
+      </form>
+
+      <div style="margin-top:18px;text-align:center;font-size:12px;color:var(--text-muted);">
+        Sistema restrito — uso exclusivo interno
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

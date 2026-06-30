@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Acordos{% endblock %}
+{% block topbar_title %}Acordos e Negociações{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary" onclick="abrirNovoAcordo()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    Novo Acordo
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<div class="search-bar">
+  <div class="search-input-wrap">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <input type="search" id="busca-acordos" placeholder="Buscar por devedor, CPF/CNPJ ou contrato...">
+  </div>
+  <select id="filtro-status-acordo" style="width:200px;">
+    <option value="">Todos os Status</option>
+    <option>Em Andamento</option><option>Quitado</option><option>Cancelado</option>
+    <option>Pagamento em andamento</option><option>Acordo em Andamento</option>
+  </select>
+  <button class="btn btn-outline" onclick="buscarAcordos(1)">Filtrar</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Acordos Registrados</div>
+    <span id="total-acordos" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Devedor</th>
+          <th>Contrato</th>
+          <th>Origem</th>
+          <th>Dívida Confessada</th>
+          <th>Dívida Transacionada</th>
+          <th>% Recuperação</th>
+          <th>Forma Pgto.</th>
+          <th>Status Acordo</th>
+          <th>Status Pgto.</th>
+          <th>Responsável</th>
+          <th>Valor Recebido</th>
+          <th style="text-align:center;width:80px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-acordos">
+        <tr class="loading-row"><td colspan="12">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="paginacao-acordos" class="pagination"></div>
+</div>
+
+<!-- Modal Acordo -->
+<div class="modal-overlay" id="modal-acordo">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-acordo-titulo">Novo Acordo</div>
+      <button class="modal-close" data-close-modal="modal-acordo">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;max-height:75vh;">
+      <input type="hidden" id="acordo-id">
+
+      <div class="form-section-title">Identificação do Contrato</div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Nº Contrato (busca) *</label>
+          <input type="text" id="ac-contrato-busca" placeholder="Digite o número do contrato...">
+          <input type="hidden" id="ac-contrato-id">
+          <div id="ac-contrato-info" style="font-size:12px;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+      </div>
+
+      <div class="form-section-title">Proposta e Deliberação</div>
+      <div class="form-group">
+        <label>Proposta de Acordo</label>
+        <textarea id="ac-proposta" rows="2" placeholder="Descreva os termos da proposta..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Comitê</label><input type="text" id="ac-comite" placeholder="Ex.: Comitê de Crédito"></div>
+        <div class="form-group">
+          <label>Resultado da Proposta</label>
+          <select id="ac-resultado">
+            <option value="">—</option>
+            <option>Aprovado</option><option>Rejeitado</option><option>Pendente</option><option>Em análise</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Origem do Acordo</label>
+          <select id="ac-origem">
+            <option value="">—</option>
+            <option>COCRED</option><option>Devedor</option><option>Advogado</option><option>Judicial</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Responsável</label><input type="text" id="ac-responsavel" placeholder="Nome do responsável"></div>
+      </div>
+      <div class="form-group">
+        <label>Justificativa</label>
+        <textarea id="ac-justificativa" rows="2"></textarea>
+      </div>
+
+      <div class="form-section-title">Valores Negociados</div>
+      <div class="form-row">
+        <div class="form-group"><label>Dívida Confessada (R$)</label><input type="number" step="0.01" id="ac-div-confessada" placeholder="0,00"></div>
+        <div class="form-group"><label>Dívida Transacionada (R$)</label><input type="number" step="0.01" id="ac-div-transacionada" placeholder="0,00"></div>
+        <div class="form-group"><label>% de Recuperação</label><input type="number" step="0.01" id="ac-pct-recuperacao" placeholder="0,00"></div>
+      </div>
+      <div class="form-group"><label>Bases do Acordo Negociado</label><textarea id="ac-bases" rows="2"></textarea></div>
+      <div class="form-group"><label>Pendências</label><textarea id="ac-pendencias" rows="2"></textarea></div>
+      <div class="form-group"><label>Detalhamento do Acordo</label><textarea id="ac-detalhamento" rows="2"></textarea></div>
+
+      <div class="form-section-title">Status e Forma de Pagamento</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Status do Acordo</label>
+          <select id="ac-status-acordo">
+            <option value="">—</option>
+            <option>Em Andamento</option><option>Acordo em Andamento</option>
+            <option>Cancelado</option><option>Fechado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Forma de Pagamento</label>
+          <select id="ac-forma-pgto">
+            <option value="">—</option>
+            <option>À vista</option><option>Parcelado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status do Pagamento</label>
+          <select id="ac-status-pgto">
+            <option value="">—</option>
+            <option>Pagamento em andamento</option><option>Quitado</option><option>Inadimplente</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Modalidade Pagamento</label><input type="text" id="ac-modalidade-pgto"></div>
+      </div>
+
+      <div class="form-section-title">Parcelamento</div>
+      <div class="form-row">
+        <div class="form-group"><label>Nº Parcelas</label><input type="number" id="ac-n-parcelas" min="1"></div>
+        <div class="form-group"><label>Valor Entrada (R$)</label><input type="number" step="0.01" id="ac-vl-entrada"></div>
+        <div class="form-group"><label>Valor da Parcela (R$)</label><input type="number" step="0.01" id="ac-vl-parcela"></div>
+        <div class="form-group">
+          <label>Periodicidade</label>
+          <select id="ac-periodicidade">
+            <option value="">—</option>
+            <option>Mensal</option><option>Trimestral</option><option>Semestral</option><option>Anual</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Primeira Parcela</label><input type="date" id="ac-primeira-parcela"></div>
+        <div class="form-group"><label>Última Parcela</label><input type="date" id="ac-ultima-parcela"></div>
+        <div class="form-group"><label>Parcelas Quitadas</label><input type="number" id="ac-parcelas-quitadas" min="0" value="0"></div>
+      </div>
+
+      <div class="form-section-title">Recebimento</div>
+      <div class="form-row">
+        <div class="form-group"><label>Valor Recebido (R$)</label><input type="number" step="0.01" id="ac-vl-recebido"></div>
+        <div class="form-group"><label>Valor Bloqueado Judicial (R$)</label><input type="number" step="0.01" id="ac-vl-bloqueado"></div>
+        <div class="form-group"><label>Data do Recebimento</label><input type="date" id="ac-data-recebimento"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-acordo">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAcordo()">Salvar Acordo</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let paginaAcordoAtual = 1;
+
+async function buscarAcordos(pg = 1) {
+  paginaAcordoAtual = pg;
+  const q = document.getElementById('busca-acordos').value;
+  const st = document.getElementById('filtro-status-acordo').value;
+  const tbody = document.getElementById('tbody-acordos');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="12"><span class="spinner"></span> Carregando...</td></tr>';
+
+  try {
+    const data = await apiGet(`/api/acordos?page=${pg}&q=${encodeURIComponent(q)}&status=${encodeURIComponent(st)}`);
+    document.getElementById('total-acordos').textContent = `${data.total} acordo(s)`;
+
+    if (!data.items.length) { tbody.innerHTML = emptyRow(12); return; }
+
+    tbody.innerHTML = data.items.map(a => `
+      <tr>
+        <td>
+          <div style="font-weight:600;color:var(--navy);">${escHtml(a.devedor_nome)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${escHtml(a.devedor_cpf_cnpj||'')}</div>
+        </td>
+        <td><code style="font-size:11px;">${escHtml(a.numero_contrato||'—')}</code></td>
+        <td>${escHtml(a.origem_acordo||'—')}</td>
+        <td>${fmtMoeda(a.divida_confessada)}</td>
+        <td>${fmtMoeda(a.divida_transacionada)}</td>
+        <td style="text-align:center;">${a.percentual_recuperacao ? fmtPct(a.percentual_recuperacao) : '—'}</td>
+        <td>${escHtml(a.forma_pagamento||'—')}</td>
+        <td>${statusBadge(a.status_acordo)}</td>
+        <td>${statusBadge(a.status_pagamento)}</td>
+        <td style="font-size:12px;">${escHtml(a.responsavel||'—')}</td>
+        <td class="currency-positive">${fmtMoeda(a.valor_recebido)}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-outline btn-xs" onclick="editarAcordo(${a.acordo_id})" title="Editar">✏️</button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPaginacao(document.getElementById('paginacao-acordos'), pg, data.paginas, buscarAcordos);
+  } catch(e) {
+    tbody.innerHTML = emptyRow(12,'Erro ao carregar dados.');
+    toast(e.message,'error');
+  }
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function abrirNovoAcordo() {
+  document.getElementById('modal-acordo-titulo').textContent = 'Novo Acordo';
+  document.getElementById('acordo-id').value = '';
+  document.querySelectorAll('#modal-acordo input:not([type=hidden]), #modal-acordo select, #modal-acordo textarea').forEach(el => el.value = '');
+  document.getElementById('ac-parcelas-quitadas').value = '0';
+  openModal('modal-acordo');
+}
+
+async function editarAcordo(id) {
+  try {
+    const r = await apiGet(`/api/acordos?page=1&per_page=500`);
+    const a = r.items.find(x => x.acordo_id == id);
+    if (!a) { toast('Acordo não encontrado.','error'); return; }
+    document.getElementById('modal-acordo-titulo').textContent = 'Editar Acordo';
+    document.getElementById('acordo-id').value = id;
+    document.getElementById('ac-contrato-busca').value = a.numero_contrato||'';
+    document.getElementById('ac-contrato-id').value = a.contrato_id;
+    document.getElementById('ac-resultado').value = a.resultado_proposta||'';
+    document.getElementById('ac-origem').value = a.origem_acordo||'';
+    document.getElementById('ac-responsavel').value = a.responsavel||'';
+    document.getElementById('ac-status-acordo').value = a.status_acordo||'';
+    document.getElementById('ac-status-pgto').value = a.status_pagamento||'';
+    document.getElementById('ac-forma-pgto').value = a.forma_pagamento||'';
+    document.getElementById('ac-div-confessada').value = a.divida_confessada||'';
+    document.getElementById('ac-div-transacionada').value = a.divida_transacionada||'';
+    document.getElementById('ac-pct-recuperacao').value = a.percentual_recuperacao||'';
+    document.getElementById('ac-n-parcelas').value = a.n_parcelas||'';
+    document.getElementById('ac-vl-parcela').value = a.valor_parcela||'';
+    document.getElementById('ac-parcelas-quitadas').value = a.parcelas_quitadas||0;
+    document.getElementById('ac-vl-recebido').value = a.valor_recebido||'';
+    document.getElementById('ac-data-recebimento').value = a.data_recebimento||'';
+    openModal('modal-acordo');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// Busca contrato por número
+let debAcordo;
+document.getElementById('ac-contrato-busca').addEventListener('input', function() {
+  clearTimeout(debAcordo);
+  debAcordo = setTimeout(async () => {
+    const q = this.value.trim();
+    if (!q) return;
+    try {
+      const d = await apiGet(`/api/contratos?q=${encodeURIComponent(q)}&per_page=1`);
+      if (d.items.length) {
+        document.getElementById('ac-contrato-id').value = d.items[0].id;
+        document.getElementById('ac-contrato-info').textContent = `✔ ${d.items[0].devedor_nome} — ${d.items[0].modalidade||''}`;
+      } else {
+        document.getElementById('ac-contrato-id').value = '';
+        document.getElementById('ac-contrato-info').textContent = 'Contrato não encontrado.';
+      }
+    } catch(e) {}
+  }, 400);
+});
+
+async function salvarAcordo() {
+  const id = document.getElementById('acordo-id').value;
+  const contratoId = document.getElementById('ac-contrato-id').value;
+  if (!contratoId) { toast('Selecione um contrato válido.','warning'); return; }
+
+  const payload = {
+    contrato_id: parseInt(contratoId),
+    proposta: document.getElementById('ac-proposta').value,
+    comite: document.getElementById('ac-comite').value,
+    resultado_proposta: document.getElementById('ac-resultado').value,
+    justificativa: document.getElementById('ac-justificativa').value,
+    origem_acordo: document.getElementById('ac-origem').value,
+    status_acordo: document.getElementById('ac-status-acordo').value,
+    responsavel: document.getElementById('ac-responsavel').value,
+    divida_confessada: document.getElementById('ac-div-confessada').value||null,
+    divida_transacionada: document.getElementById('ac-div-transacionada').value||null,
+    percentual_recuperacao: document.getElementById('ac-pct-recuperacao').value||null,
+    detalhamento: document.getElementById('ac-detalhamento').value,
+    pendencias: document.getElementById('ac-pendencias').value,
+    bases_acordo: document.getElementById('ac-bases').value,
+    forma_pagamento: document.getElementById('ac-forma-pgto').value,
+    modalidade_pagamento: document.getElementById('ac-modalidade-pgto').value,
+    status_pagamento: document.getElementById('ac-status-pgto').value,
+    n_parcelas: document.getElementById('ac-n-parcelas').value||null,
+    valor_entrada: document.getElementById('ac-vl-entrada').value||null,
+    valor_parcela: document.getElementById('ac-vl-parcela').value||null,
+    periodicidade_parcela: document.getElementById('ac-periodicidade').value,
+    primeira_parcela: document.getElementById('ac-primeira-parcela').value||null,
+    ultima_parcela: document.getElementById('ac-ultima-parcela').value||null,
+    parcelas_quitadas: parseInt(document.getElementById('ac-parcelas-quitadas').value)||0,
+    valor_recebido: document.getElementById('ac-vl-recebido').value||null,
+    valor_bloqueado_judicialmente: document.getElementById('ac-vl-bloqueado').value||null,
+    data_recebimento: document.getElementById('ac-data-recebimento').value||null,
+  };
+
+  try {
+    if (id) { await apiPut(`/api/acordos/${id}`, payload); toast('Acordo atualizado.','success'); }
+    else     { await apiPost('/api/acordos', payload); toast('Acordo registrado.','success'); }
+    closeModal('modal-acordo');
+    buscarAcordos(paginaAcordoAtual);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+let debAcordos2;
+document.getElementById('busca-acordos').addEventListener('input', () => {
+  clearTimeout(debAcordos2);
+  debAcordos2 = setTimeout(() => buscarAcordos(1), 350);
+});
+
+buscarAcordos(1);
+</script>
+{% endblock %}

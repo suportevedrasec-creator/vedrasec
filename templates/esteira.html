@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Esteira{% endblock %}
+{% block topbar_title %}Esteira — Processos em Andamento{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary" onclick="openModal('modal-novo-processo')">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+    Novo Processo
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<div class="search-bar">
+  <div class="search-input-wrap">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <input type="search" id="busca-esteira" placeholder="Buscar devedor, CPF/CNPJ, processo ou contrato...">
+  </div>
+  <select id="filtro-status-esteira" style="width:220px;">
+    <option value="">Todos os Status</option>
+    <option>Em andamento</option>
+    <option>Aguardando posicionamento do Juízo</option>
+    <option>Citado</option>
+    <option>Intimado</option>
+    <option>Bloqueio</option>
+    <option>Quitado</option>
+    <option>Cancelado</option>
+  </select>
+  <button class="btn btn-outline" onclick="buscarEsteira(1)">Filtrar</button>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Casos em Esteira</div>
+    <span id="total-esteira" style="font-size:12px;color:var(--text-muted);"></span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Devedor</th>
+          <th>Contrato</th>
+          <th>Nº Processo</th>
+          <th>Cessão nos Autos</th>
+          <th>Vl. Atualizado</th>
+          <th>Vl. Lei 14.905</th>
+          <th>Garantia Real</th>
+          <th>Status</th>
+          <th>Andamentos</th>
+          <th>Data Mov.</th>
+          <th style="text-align:center;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-esteira">
+        <tr class="loading-row"><td colspan="11">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="paginacao-esteira" class="pagination"></div>
+</div>
+
+<!-- Modal Novo Processo -->
+<div class="modal-overlay" id="modal-novo-processo">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-processo-titulo">Registrar Processo</div>
+      <button class="modal-close" data-close-modal="modal-novo-processo">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="proc-id">
+      <div class="form-row">
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Contrato (ID ou Nº) *</label>
+          <input type="text" id="proc-contrato-busca" placeholder="Digite o nº do contrato...">
+          <input type="hidden" id="proc-contrato-id">
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Nº Processo</label>
+          <input type="text" id="proc-numero" placeholder="0000000-00.0000.0.00.0000">
+        </div>
+        <div class="form-group">
+          <label>Formalização Cessão nos Autos</label>
+          <select id="proc-formalizacao">
+            <option value="">—</option>
+            <option>Sim</option><option>Não</option><option>Pendente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <input type="text" id="proc-status" placeholder="Ex.: Em andamento">
+        </div>
+        <div class="form-group">
+          <label>Data da Movimentação</label>
+          <input type="date" id="proc-data-mov">
+        </div>
+        <div class="form-group">
+          <label>Provisão de Pagamentos (R$)</label>
+          <input type="number" step="0.01" id="proc-provisao">
+        </div>
+        <div class="form-group">
+          <label>Custos do Processo (R$)</label>
+          <input type="number" step="0.01" id="proc-custos">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Andamentos</label>
+        <textarea id="proc-andamentos" rows="3" placeholder="Descreva os últimos andamentos processuais..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Detalhamento</label>
+        <textarea id="proc-detalhamento" rows="2" placeholder="Detalhes adicionais..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Providência</label>
+        <textarea id="proc-providencia" rows="2" placeholder="Próximas providências..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-novo-processo">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProcesso()">Salvar Processo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhe Processo -->
+<div class="modal-overlay" id="modal-detalhe-esteira">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-detalhe-esteira-titulo">Detalhes do Processo</div>
+      <button class="modal-close" data-close-modal="modal-detalhe-esteira">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modal-detalhe-esteira-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal="modal-detalhe-esteira">Fechar</button>
+      <button class="btn btn-primary" id="btn-editar-processo">Editar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let paginaEsteiraAtual = 1;
+let processoAtual = null;
+
+async function buscarEsteira(pg = 1) {
+  paginaEsteiraAtual = pg;
+  const q = document.getElementById('busca-esteira').value;
+  const st = document.getElementById('filtro-status-esteira').value;
+  const tbody = document.getElementById('tbody-esteira');
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="11"><span class="spinner"></span> Carregando...</td></tr>';
+
+  try {
+    const data = await apiGet(`/api/esteira?page=${pg}&q=${encodeURIComponent(q)}&status=${encodeURIComponent(st)}`);
+    document.getElementById('total-esteira').textContent = `${data.total} processo(s)`;
+
+    if (!data.items.length) {
+      tbody.innerHTML = emptyRow(11);
+      return;
+    }
+
+    tbody.innerHTML = data.items.map(p => `
+      <tr>
+        <td>
+          <div style="font-weight:600;color:var(--navy);">${escHtml(p.devedor_nome)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${escHtml(p.devedor_cpf_cnpj||'')} | ${escHtml(p.devedor_regional||'')}</div>
+        </td>
+        <td><code style="font-size:11px;background:#f0f0f0;padding:2px 5px;border-radius:3px;">${escHtml(p.numero_contrato||'—')}</code></td>
+        <td style="font-size:12px;">${p.numero_processo && p.numero_processo!=='0' ? `<code style="font-size:11px;">${escHtml(p.numero_processo)}</code>` : '—'}</td>
+        <td>${statusBadge(p.formalizacao_cessao_autos)}</td>
+        <td class="currency-positive">${fmtMoeda(p.valor_atualizado)}</td>
+        <td class="currency-positive">${fmtMoeda(p.valor_atualizado_lei14905)}</td>
+        <td style="font-size:12px;">${escHtml(p.garantia_real||'—')}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;">${escHtml(p.andamentos||'—')}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${fmtData(p.data_movimentacao)}</td>
+        <td style="text-align:center;">
+          <button class="btn btn-outline btn-xs" onclick="verDetalhe(${JSON.stringify(p).replace(/"/g,'&quot;')})" title="Ver detalhes">👁</button>
+          <button class="btn btn-outline btn-xs" onclick="prepararEditarProcesso(${p.processo_id})" title="Editar">✏️</button>
+        </td>
+      </tr>
+    `).join('');
+
+    renderPaginacao(document.getElementById('paginacao-esteira'), pg, data.paginas, buscarEsteira);
+  } catch(e) {
+    tbody.innerHTML = emptyRow(11, 'Erro ao carregar dados.');
+    toast(e.message, 'error');
+  }
+}
+
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function verDetalhe(p) {
+  document.getElementById('modal-detalhe-esteira-titulo').textContent = p.devedor_nome;
+  document.getElementById('modal-detalhe-esteira-body').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item"><label>Devedor</label><div class="detail-value highlight">${escHtml(p.devedor_nome)}</div></div>
+      <div class="detail-item"><label>CPF/CNPJ</label><div class="detail-value">${escHtml(p.devedor_cpf_cnpj||'—')}</div></div>
+      <div class="detail-item"><label>Regional</label><div class="detail-value">${escHtml(p.devedor_regional||'—')}</div></div>
+      <div class="detail-item"><label>Contrato</label><div class="detail-value">${escHtml(p.numero_contrato||'—')}</div></div>
+      <div class="detail-item"><label>Nº Processo</label><div class="detail-value">${escHtml(p.numero_processo||'—')}</div></div>
+      <div class="detail-item"><label>Cessão nos Autos</label><div class="detail-value">${escHtml(p.formalizacao_cessao_autos||'—')}</div></div>
+      <div class="detail-item"><label>Status</label><div class="detail-value">${statusBadge(p.status)}</div></div>
+      <div class="detail-item"><label>Data Movimentação</label><div class="detail-value">${fmtData(p.data_movimentacao)}</div></div>
+      <div class="detail-item"><label>Garantia Real</label><div class="detail-value">${escHtml(p.garantia_real||'—')}</div></div>
+      <div class="detail-item"><label>Grupo Cobrança</label><div class="detail-value">${escHtml(p.grupo_cobranca||'—')}</div></div>
+      <div class="detail-item"><label>Vl. Atualizado (Simples)</label><div class="detail-value currency">${fmtMoeda(p.valor_atualizado)}</div></div>
+      <div class="detail-item"><label>Vl. Atualizado (Lei 14.905)</label><div class="detail-value currency">${fmtMoeda(p.valor_atualizado_lei14905)}</div></div>
+      <div class="detail-item"><label>Provisão</label><div class="detail-value">${fmtMoeda(p.provisao_pagamentos)}</div></div>
+      <div class="detail-item"><label>Acordo Registrado</label><div class="detail-value">${p.tem_acordo ? '<span class="badge badge-success">Sim</span>' : '<span class="badge badge-muted">Não</span>'}</div></div>
+    </div>
+    <hr class="divider">
+    <div class="form-group"><label>Andamentos</label><div style="background:var(--cream);padding:12px;border-radius:var(--radius);font-size:13px;min-height:60px;">${escHtml(p.andamentos||'—')}</div></div>
+    <div class="form-group"><label>Detalhamento</label><div style="background:var(--cream);padding:12px;border-radius:var(--radius);font-size:13px;min-height:50px;">${escHtml(p.detalhamento||'—')}</div></div>
+    <div class="form-group"><label>Providência</label><div style="background:var(--cream);padding:12px;border-radius:var(--radius);font-size:13px;min-height:50px;">${escHtml(p.providencia||'—')}</div></div>
+  `;
+  document.getElementById('btn-editar-processo').onclick = () => {
+    closeModal('modal-detalhe-esteira');
+    prepararEditarProcesso(p.processo_id);
+  };
+  openModal('modal-detalhe-esteira');
+}
+
+async function prepararEditarProcesso(processoId) {
+  document.getElementById('modal-processo-titulo').textContent = 'Editar Processo';
+  document.getElementById('proc-id').value = processoId;
+  // Buscar os dados da esteira para preencher
+  try {
+    const data = await apiGet(`/api/esteira?page=1&per_page=500`);
+    const p = data.items.find(x => x.processo_id == processoId);
+    if (p) {
+      document.getElementById('proc-contrato-busca').value = p.numero_contrato||'';
+      document.getElementById('proc-contrato-id').value = p.contrato_id;
+      document.getElementById('proc-numero').value = p.numero_processo||'';
+      document.getElementById('proc-formalizacao').value = p.formalizacao_cessao_autos||'';
+      document.getElementById('proc-status').value = p.status||'';
+      document.getElementById('proc-data-mov').value = p.data_movimentacao||'';
+      document.getElementById('proc-provisao').value = p.provisao_pagamentos||'';
+      document.getElementById('proc-andamentos').value = p.andamentos||'';
+      document.getElementById('proc-detalhamento').value = p.detalhamento||'';
+      document.getElementById('proc-providencia').value = p.providencia||'';
+    }
+  } catch(e) {}
+  openModal('modal-novo-processo');
+}
+
+async function salvarProcesso() {
+  const id = document.getElementById('proc-id').value;
+  const contratoBusca = document.getElementById('proc-contrato-busca').value.trim();
+  let contratoId = document.getElementById('proc-contrato-id').value;
+
+  // Tentar resolver contrato por número se não tiver o ID
+  if (!contratoId && contratoBusca) {
+    try {
+      const d = await apiGet(`/api/contratos?q=${encodeURIComponent(contratoBusca)}&per_page=1`);
+      if (d.items.length) contratoId = d.items[0].id;
+    } catch(e) {}
+  }
+  if (!contratoId) { toast('Informe um contrato válido.','warning'); return; }
+
+  const payload = {
+    contrato_id: parseInt(contratoId),
+    numero_processo: document.getElementById('proc-numero').value,
+    formalizacao_cessao_autos: document.getElementById('proc-formalizacao').value,
+    status: document.getElementById('proc-status').value,
+    data_movimentacao: document.getElementById('proc-data-mov').value||null,
+    provisao_pagamentos: document.getElementById('proc-provisao').value||null,
+    custos_processo: document.getElementById('proc-custos').value||null,
+    andamentos: document.getElementById('proc-andamentos').value,
+    detalhamento: document.getElementById('proc-detalhamento').value,
+    providencia: document.getElementById('proc-providencia').value,
+  };
+
+  try {
+    if (id) { await apiPut(`/api/processos/${id}`, payload); toast('Processo atualizado.','success'); }
+    else     { await apiPost('/api/processos', payload); toast('Processo cadastrado.','success'); }
+    closeModal('modal-novo-processo');
+    buscarEsteira(paginaEsteiraAtual);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+let debTimer2;
+document.getElementById('busca-esteira').addEventListener('input', () => {
+  clearTimeout(debTimer2);
+  debTimer2 = setTimeout(() => buscarEsteira(1), 350);
+});
+
+buscarEsteira(1);
+</script>
+{% endblock %}

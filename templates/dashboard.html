@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}Painel de Controle{% endblock %}
+
+{% block content %}
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-navy">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    </div>
+    <div class="kpi-label">Total Devedores</div>
+    <div class="kpi-value">{{ total_devedores }}</div>
+    <div class="kpi-sub">cadastros ativos</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-gold">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.34C18 2.54 15.42.14 12.26.14c-1.74 0-3.29.71-4.44 1.84L6 3.73 4.18 1.98C3.03.85 1.48.14-.26.14-.26 0-.26 0 .02 0c-3.16 0-5.76 2.4-5.76 5.38 0 .46.08.9.18 1.34H-7c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h1v6c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-6h1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+    </div>
+    <div class="kpi-label">Total Contratos</div>
+    <div class="kpi-value">{{ total_contratos }}</div>
+    <div class="kpi-sub">{{ contratos_esteira }} na esteira</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-navy">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+    </div>
+    <div class="kpi-label">Valor em Prejuízo</div>
+    <div class="kpi-value" style="font-size:1.4rem;">{{ "R$ {:,.0f}".format(soma_prejuizo).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+    <div class="kpi-sub">valor original</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-warning">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>
+    </div>
+    <div class="kpi-label">Valor Atualizado</div>
+    <div class="kpi-value" style="font-size:1.4rem;">{{ "R$ {:,.0f}".format(soma_atualizado).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+    <div class="kpi-sub">com correção monetária</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-success">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+    </div>
+    <div class="kpi-label">Valor Recuperado</div>
+    <div class="kpi-value" style="font-size:1.4rem;">{{ "R$ {:,.0f}".format(soma_recebido).replace(",", "X").replace(".", ",").replace("X", ".") }}</div>
+    <div class="kpi-sub">via acordos</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-icon kpi-gold">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+    </div>
+    <div class="kpi-label">Acordos Ativos</div>
+    <div class="kpi-value">{{ acordos_andamento }}</div>
+    <div class="kpi-sub">{{ acordos_quitados }} quitados</div>
+  </div>
+</div>
+
+<!-- Gráficos + Tabela Recentes -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+
+  <!-- Distribuição por Grupo -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Carteira por Grupo de Cobrança</div>
+    </div>
+    <div class="card-body">
+      <canvas id="chart-grupos" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Status dos Processos -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Status dos Processos</div>
+    </div>
+    <div class="card-body">
+      <canvas id="chart-status" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Processos Recentes -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Últimas Movimentações</div>
+    <a href="{{ url_for('esteira') }}" class="btn btn-outline btn-sm">Ver Esteira</a>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Devedor</th>
+          <th>Processo</th>
+          <th>Status</th>
+          <th>Andamentos</th>
+          <th>Data Mov.</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for proc, contrato, dev in processos_recentes %}
+        <tr>
+          <td class="td-name">
+            {{ dev.nome }}<br>
+            <span style="font-size:11px;color:var(--text-muted);">{{ dev.cpf_cnpj }}</span>
+          </td>
+          <td>
+            {% if proc.numero_processo and proc.numero_processo != '0' %}
+              <code style="font-size:12px;background:#f0f0f0;padding:2px 6px;border-radius:4px;">{{ proc.numero_processo }}</code>
+            {% else %}
+              <span style="color:var(--text-muted)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% set s = proc.status or '' %}
+            {% if 'quitad' in s.lower() or 'recebid' in s.lower() %}
+              <span class="badge badge-success">{{ s }}</span>
+            {% elif 'andamento' in s.lower() or 'aguardando' in s.lower() %}
+              <span class="badge badge-warning">{{ s }}</span>
+            {% elif 'cancelad' in s.lower() or 'frustrad' in s.lower() %}
+              <span class="badge badge-danger">{{ s }}</span>
+            {% elif s %}
+              <span class="badge badge-navy">{{ s }}</span>
+            {% else %}
+              <span class="badge badge-muted">—</span>
+            {% endif %}
+          </td>
+          <td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ proc.andamentos or '—' }}
+          </td>
+          <td style="color:var(--text-muted);white-space:nowrap;">
+            {% if proc.data_movimentacao %}
+              {{ proc.data_movimentacao.strftime('%d/%m/%Y') }}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);font-style:italic;">Nenhuma movimentação registrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const navyPalette = [
+  '#1D2E50','#2C4170','#4A6FA5','#B8973A','#D4AF5A','#2E6E4C','#3D8E6A','#8B6914','#5A8FD4','#6B7280',
+];
+
+// Gráfico Grupos
+const gruposData = {{ grupos | tojson }};
+new Chart(document.getElementById('chart-grupos'), {
+  type: 'bar',
+  data: {
+    labels: gruposData.map(g => g[0] || 'Sem grupo'),
+    datasets: [{
+      label: 'Quantidade',
+      data: gruposData.map(g => g[1]),
+      backgroundColor: navyPalette,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { grid: { color: '#E8E2D6' }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// Gráfico Status
+const statusData = {{ status_dist | tojson }};
+new Chart(document.getElementById('chart-status'), {
+  type: 'doughnut',
+  data: {
+    labels: statusData.map(s => s[0] || 'Sem status'),
+    datasets: [{
+      data: statusData.map(s => s[1]),
+      backgroundColor: navyPalette,
+      borderWidth: 2,
+      borderColor: '#FBF8F3',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 14 } }
+    },
+    cutout: '60%',
+  }
+});
+</script>
+{% endblock %}
