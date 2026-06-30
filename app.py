@@ -728,8 +728,10 @@ def criar_usuario_padrao():
         print('Sistema iniciado. Login: admin@vedrasec.com.br / VedraSec@2024')
 
 
+# Inicializar banco ao importar (funciona com gunicorn e execução direta)
+with app.app_context():
+    db.create_all()
+    criar_usuario_padrao()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        criar_usuario_padrao()
     app.run(debug=True, host='0.0.0.0', port=5000)
