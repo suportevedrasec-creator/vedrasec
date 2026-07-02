@@ -72,8 +72,8 @@
       <input type="hidden" id="proc-id">
       <div class="form-row">
         <div class="form-group" style="grid-column:span 2;">
-          <label>Contrato (ID ou Nº) *</label>
-          <input type="text" id="proc-contrato-busca" placeholder="Digite o nº do contrato...">
+          <label>Contrato (ID ou Nº)</label>
+          <input type="text" id="proc-contrato-busca" placeholder="Digite o nº do contrato (opcional)...">
           <input type="hidden" id="proc-contrato-id">
         </div>
         <div class="form-group" style="grid-column:span 2;">
@@ -167,10 +167,10 @@ async function buscarEsteira(pg = 1) {
     tbody.innerHTML = data.items.map(p => `
       <tr>
         <td>
-          <div style="font-weight:600;color:var(--navy);">${escHtml(p.devedor_nome)}</div>
+          <div style="font-weight:600;color:var(--navy);">${escHtml(p.devedor_nome||'Sem vínculo')}</div>
           <div style="font-size:11px;color:var(--text-muted);">${escHtml(p.devedor_cpf_cnpj||'')} | ${escHtml(p.devedor_regional||'')}</div>
         </td>
-        <td><code style="font-size:11px;background:#f0f0f0;padding:2px 5px;border-radius:3px;">${escHtml(p.numero_contrato||'—')}</code></td>
+        <td><code style="font-size:11px;background:#f0f0f0;padding:2px 5px;border-radius:3px;">${escHtml(p.numero_contrato||p.contrato_referencia||'—')}</code></td>
         <td style="font-size:12px;">${p.numero_processo && p.numero_processo!=='0' ? `<code style="font-size:11px;">${escHtml(p.numero_processo)}</code>` : '—'}</td>
         <td>${statusBadge(p.formalizacao_cessao_autos)}</td>
         <td class="currency-positive">${fmtMoeda(p.valor_atualizado)}</td>
@@ -198,13 +198,13 @@ function escHtml(str) {
 }
 
 function verDetalhe(p) {
-  document.getElementById('modal-detalhe-esteira-titulo').textContent = p.devedor_nome;
+  document.getElementById('modal-detalhe-esteira-titulo').textContent = p.devedor_nome||'Processo sem vínculo';
   document.getElementById('modal-detalhe-esteira-body').innerHTML = `
     <div class="detail-grid">
-      <div class="detail-item"><label>Devedor</label><div class="detail-value highlight">${escHtml(p.devedor_nome)}</div></div>
+      <div class="detail-item"><label>Devedor</label><div class="detail-value highlight">${escHtml(p.devedor_nome||'Sem vínculo')}</div></div>
       <div class="detail-item"><label>CPF/CNPJ</label><div class="detail-value">${escHtml(p.devedor_cpf_cnpj||'—')}</div></div>
       <div class="detail-item"><label>Regional</label><div class="detail-value">${escHtml(p.devedor_regional||'—')}</div></div>
-      <div class="detail-item"><label>Contrato</label><div class="detail-value">${escHtml(p.numero_contrato||'—')}</div></div>
+      <div class="detail-item"><label>Contrato</label><div class="detail-value">${escHtml(p.numero_contrato||p.contrato_referencia||'—')}</div></div>
       <div class="detail-item"><label>Nº Processo</label><div class="detail-value">${escHtml(p.numero_processo||'—')}</div></div>
       <div class="detail-item"><label>Cessão nos Autos</label><div class="detail-value">${escHtml(p.formalizacao_cessao_autos||'—')}</div></div>
       <div class="detail-item"><label>Status</label><div class="detail-value">${statusBadge(p.status)}</div></div>
@@ -236,8 +236,8 @@ async function prepararEditarProcesso(processoId) {
     const data = await apiGet(`/api/esteira?page=1&per_page=500`);
     const p = data.items.find(x => x.processo_id == processoId);
     if (p) {
-      document.getElementById('proc-contrato-busca').value = p.numero_contrato||'';
-      document.getElementById('proc-contrato-id').value = p.contrato_id;
+      document.getElementById('proc-contrato-busca').value = p.numero_contrato||p.contrato_referencia||'';
+      document.getElementById('proc-contrato-id').value = p.contrato_id||'';
       document.getElementById('proc-numero').value = p.numero_processo||'';
       document.getElementById('proc-formalizacao').value = p.formalizacao_cessao_autos||'';
       document.getElementById('proc-status').value = p.status||'';
@@ -263,10 +263,11 @@ async function salvarProcesso() {
       if (d.items.length) contratoId = d.items[0].id;
     } catch(e) {}
   }
-  if (!contratoId) { toast('Informe um contrato válido.','warning'); return; }
+  const semVinculo = !contratoId && contratoBusca;
 
   const payload = {
-    contrato_id: parseInt(contratoId),
+    contrato_id: contratoId ? parseInt(contratoId) : null,
+    contrato_referencia: contratoId ? null : contratoBusca,
     numero_processo: document.getElementById('proc-numero').value,
     formalizacao_cessao_autos: document.getElementById('proc-formalizacao').value,
     status: document.getElementById('proc-status').value,
@@ -281,6 +282,7 @@ async function salvarProcesso() {
   try {
     if (id) { await apiPut(`/api/processos/${id}`, payload); toast('Processo atualizado.','success'); }
     else     { await apiPost('/api/processos', payload); toast('Processo cadastrado.','success'); }
+    if (semVinculo) toast('Contrato não encontrado na base — processo salvo sem vínculo.','warning');
     closeModal('modal-novo-processo');
     buscarEsteira(paginaEsteiraAtual);
   } catch(e) { toast(e.message,'error'); }

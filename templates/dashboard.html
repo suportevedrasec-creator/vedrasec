@@ -107,8 +107,8 @@
         {% for proc, contrato, dev in processos_recentes %}
         <tr>
           <td class="td-name">
-            {{ dev.nome }}<br>
-            <span style="font-size:11px;color:var(--text-muted);">{{ dev.cpf_cnpj }}</span>
+            {{ dev.nome if dev else 'Sem vínculo' }}<br>
+            <span style="font-size:11px;color:var(--text-muted);">{{ dev.cpf_cnpj if dev else '' }}</span>
           </td>
           <td>
             {% if proc.numero_processo and proc.numero_processo != '0' %}
