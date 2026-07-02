@@ -76,8 +76,8 @@ def dashboard():
 
     # Últimos processos atualizados
     processos_recentes = db.session.query(Processo, Contrato, Devedor)\
-        .join(Contrato, Processo.contrato_id == Contrato.id)\
-        .join(Devedor, Contrato.devedor_id == Devedor.id)\
+        .outerjoin(Contrato, Processo.contrato_id == Contrato.id)\
+        .outerjoin(Devedor, Contrato.devedor_id == Devedor.id)\
         .order_by(desc(Processo.atualizado_em)).limit(8).all()
 
     # Distribuição por grupo de cobrança — serializar para JSON
@@ -311,8 +311,11 @@ def api_atualizar_contrato(contrato_id):
         if campo in data:
             setattr(c, campo, data[campo].strip() if data[campo] else '')
     decimais = ['valor_contratado', 'valor_prejuizo', 'valor_pago_sec', 'capital_social',
+                'capital_penhora_judicial', 'honra_avais_credito',
                 'valor_corrigido_ipca', 'juros_mora_simples', 'honorarios_simples',
-                'valor_atualizado_simples', 'valor_corrigido_tjsp', 'honorarios_tjsp',
+                'valor_atualizado_simples', 'valor_corrigido_tjsp',
+                'juros_mora_tjsp_ate_ago2024', 'juros_mora_tjsp_apos_ago2024',
+                'juros_mora_total_lei14905', 'honorarios_tjsp',
                 'valor_atualizado_lei14905', 'indice_1pct', 'indice_final']
     for campo in decimais:
         if campo in data:
@@ -346,8 +349,8 @@ def api_esteira():
     status = request.args.get('status', '')
 
     query = db.session.query(Processo, Contrato, Devedor)\
-        .join(Contrato, Processo.contrato_id == Contrato.id)\
-        .join(Devedor, Contrato.devedor_id == Devedor.id)
+        .outerjoin(Contrato, Processo.contrato_id == Contrato.id)\
+        .outerjoin(Devedor, Contrato.devedor_id == Devedor.id)
 
     if busca:
         query = query.filter(or_(
@@ -355,6 +358,7 @@ def api_esteira():
             Processo.numero_processo.ilike(f'%{busca}%'),
             Devedor.cpf_cnpj.ilike(f'%{busca}%'),
             Contrato.numero_contrato.ilike(f'%{busca}%'),
+            Processo.contrato_referencia.ilike(f'%{busca}%'),
         ))
     if status:
         query = query.filter(Processo.status.ilike(f'%{status}%'))
@@ -366,16 +370,17 @@ def api_esteira():
     for p, c, d in itens:
         resultado.append({
             'processo_id': p.id,
-            'contrato_id': c.id,
-            'devedor_nome': d.nome,
-            'devedor_cpf_cnpj': d.cpf_cnpj,
-            'devedor_regional': d.regional,
-            'numero_contrato': c.numero_contrato,
+            'contrato_id': c.id if c else None,
+            'contrato_referencia': p.contrato_referencia,
+            'devedor_nome': d.nome if d else None,
+            'devedor_cpf_cnpj': d.cpf_cnpj if d else None,
+            'devedor_regional': d.regional if d else None,
+            'numero_contrato': c.numero_contrato if c else None,
             'numero_processo': p.numero_processo,
-            'valor_atualizado': float(c.valor_atualizado_simples) if c.valor_atualizado_simples else None,
-            'valor_atualizado_lei14905': float(c.valor_atualizado_lei14905) if c.valor_atualizado_lei14905 else None,
-            'garantia_real': c.garantia_real,
-            'grupo_cobranca': c.grupo_cobranca,
+            'valor_atualizado': float(c.valor_atualizado_simples) if c and c.valor_atualizado_simples else None,
+            'valor_atualizado_lei14905': float(c.valor_atualizado_lei14905) if c and c.valor_atualizado_lei14905 else None,
+            'garantia_real': c.garantia_real if c else None,
+            'grupo_cobranca': c.grupo_cobranca if c else None,
             'andamentos': p.andamentos,
             'detalhamento': p.detalhamento,
             'providencia': p.providencia,
@@ -383,7 +388,7 @@ def api_esteira():
             'data_movimentacao': p.data_movimentacao.isoformat() if p.data_movimentacao else None,
             'formalizacao_cessao_autos': p.formalizacao_cessao_autos,
             'provisao_pagamentos': float(p.provisao_pagamentos) if p.provisao_pagamentos else None,
-            'tem_acordo': c.acordo is not None,
+            'tem_acordo': c.acordo is not None if c else False,
         })
 
     return jsonify({
@@ -398,8 +403,10 @@ def api_esteira():
 @login_required
 def api_criar_processo():
     data = request.get_json()
+    contrato_id = data.get('contrato_id') or None
     processo = Processo(
-        contrato_id=data['contrato_id'],
+        contrato_id=contrato_id,
+        contrato_referencia=(data.get('contrato_referencia') or '').strip() or None,
         numero_processo=data.get('numero_processo', '').strip(),
         formalizacao_cessao_autos=data.get('formalizacao_cessao_autos', '').strip(),
         andamentos=data.get('andamentos', '').strip(),
@@ -410,10 +417,11 @@ def api_criar_processo():
         provisao_pagamentos=_decimal(data.get('provisao_pagamentos')),
         custos_processo=_decimal(data.get('custos_processo')),
     )
-    # Marcar contrato na esteira
-    contrato = Contrato.query.get(data['contrato_id'])
-    if contrato:
-        contrato.na_esteira = True
+    # Marcar contrato na esteira (quando houver vínculo)
+    if contrato_id:
+        contrato = Contrato.query.get(contrato_id)
+        if contrato:
+            contrato.na_esteira = True
     db.session.add(processo)
     db.session.commit()
     return jsonify({'id': processo.id, 'mensagem': 'Processo cadastrado com sucesso.'}), 201
@@ -425,10 +433,16 @@ def api_atualizar_processo(processo_id):
     p = Processo.query.get_or_404(processo_id)
     data = request.get_json()
     campos_texto = ['numero_processo', 'formalizacao_cessao_autos', 'andamentos',
-                    'detalhamento', 'providencia', 'status']
+                    'detalhamento', 'providencia', 'status', 'contrato_referencia']
     for campo in campos_texto:
         if campo in data:
             setattr(p, campo, (data[campo] or '').strip())
+    if 'contrato_id' in data:
+        p.contrato_id = data['contrato_id'] or None
+        if p.contrato_id:
+            contrato = Contrato.query.get(p.contrato_id)
+            if contrato:
+                contrato.na_esteira = True
     if 'data_movimentacao' in data:
         p.data_movimentacao = _parse_date(data['data_movimentacao'])
     if 'provisao_pagamentos' in data:
@@ -728,9 +742,39 @@ def criar_usuario_padrao():
         print('Sistema iniciado. Login: admin@vedrasec.com.br / VedraSec@2024')
 
 
+def migrar_schema():
+    """Migrações leves para bancos já existentes (sem Alembic)."""
+    from sqlalchemy import text, inspect
+    insp = inspect(db.engine)
+    if 'processos' not in insp.get_table_names():
+        return
+    cols = {c['name']: c for c in insp.get_columns('processos')}
+    dialeto = db.engine.dialect.name
+
+    with db.engine.begin() as conn:
+        # 1) Nova coluna contrato_referencia
+        if 'contrato_referencia' not in cols:
+            conn.execute(text("ALTER TABLE processos ADD COLUMN contrato_referencia VARCHAR(50)"))
+
+        # 2) Tornar contrato_id opcional (drop NOT NULL)
+        col = cols.get('contrato_id')
+        if col is not None and not col.get('nullable', True):
+            if dialeto == 'sqlite':
+                # SQLite não suporta DROP NOT NULL: recriar a tabela
+                conn.execute(text("ALTER TABLE processos RENAME TO processos_old"))
+                from models import Processo as _P
+                _P.__table__.create(conn)
+                nomes = ', '.join(c.name for c in _P.__table__.columns)
+                conn.execute(text(f"INSERT INTO processos ({nomes}) SELECT {nomes} FROM processos_old"))
+                conn.execute(text("DROP TABLE processos_old"))
+            else:
+                conn.execute(text("ALTER TABLE processos ALTER COLUMN contrato_id DROP NOT NULL"))
+
+
 # Inicializar banco ao importar (funciona com gunicorn e execução direta)
 with app.app_context():
     db.create_all()
+    migrar_schema()
     criar_usuario_padrao()
 
 if __name__ == '__main__':

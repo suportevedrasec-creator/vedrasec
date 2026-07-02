@@ -128,16 +128,45 @@ class Contrato(db.Model):
             'id': self.id,
             'devedor_id': self.devedor_id,
             'devedor_nome': self.devedor.nome if self.devedor else None,
+            # Identificação
             'numero_contrato': self.numero_contrato,
+            'numero_cliente': self.numero_cliente,
+            'modalidade_bacen': self.modalidade_bacen,
+            'modalidade': self.modalidade,
+            'subdivisao': self.subdivisao,
+            'grupo_cobranca': self.grupo_cobranca,
+            # Valores financeiros
             'valor_contratado': float(self.valor_contratado) if self.valor_contratado else None,
             'valor_prejuizo': float(self.valor_prejuizo) if self.valor_prejuizo else None,
             'valor_pago_sec': float(self.valor_pago_sec) if self.valor_pago_sec else None,
+            # Valores atualizados (simples)
+            'data_base': self.data_base.isoformat() if self.data_base else None,
+            'indice_1pct': float(self.indice_1pct) if self.indice_1pct else None,
+            'indice_final': float(self.indice_final) if self.indice_final else None,
+            'valor_corrigido_ipca': float(self.valor_corrigido_ipca) if self.valor_corrigido_ipca else None,
+            'juros_mora_simples': float(self.juros_mora_simples) if self.juros_mora_simples else None,
+            'honorarios_simples': float(self.honorarios_simples) if self.honorarios_simples else None,
             'valor_atualizado_simples': float(self.valor_atualizado_simples) if self.valor_atualizado_simples else None,
+            # Valores TJSP / Lei 14.905
+            'valor_corrigido_tjsp': float(self.valor_corrigido_tjsp) if self.valor_corrigido_tjsp else None,
+            'juros_mora_tjsp_ate_ago2024': float(self.juros_mora_tjsp_ate_ago2024) if self.juros_mora_tjsp_ate_ago2024 else None,
+            'juros_mora_tjsp_apos_ago2024': float(self.juros_mora_tjsp_apos_ago2024) if self.juros_mora_tjsp_apos_ago2024 else None,
+            'juros_mora_total_lei14905': float(self.juros_mora_total_lei14905) if self.juros_mora_total_lei14905 else None,
+            'honorarios_tjsp': float(self.honorarios_tjsp) if self.honorarios_tjsp else None,
             'valor_atualizado_lei14905': float(self.valor_atualizado_lei14905) if self.valor_atualizado_lei14905 else None,
-            'modalidade': self.modalidade,
+            # Datas
+            'data_liberacao': self.data_liberacao.isoformat() if self.data_liberacao else None,
+            'data_vencimento': self.data_vencimento.isoformat() if self.data_vencimento else None,
+            'data_transf_prejuizo': self.data_transf_prejuizo.isoformat() if self.data_transf_prejuizo else None,
+            # Garantias
             'garantia_real': self.garantia_real,
             'garantia_pessoal': self.garantia_pessoal,
-            'grupo_cobranca': self.grupo_cobranca,
+            'descricao_garantia': self.descricao_garantia,
+            'capital_social': float(self.capital_social) if self.capital_social else None,
+            'capital_penhora_judicial': float(self.capital_penhora_judicial) if self.capital_penhora_judicial else None,
+            'honra_avais_credito': float(self.honra_avais_credito) if self.honra_avais_credito else None,
+            # Cobrança
+            'devedor_negativado': self.devedor_negativado,
             'na_esteira': self.na_esteira,
         }
 
@@ -148,7 +177,8 @@ class Contrato(db.Model):
 class Processo(db.Model):
     __tablename__ = 'processos'
     id = db.Column(db.Integer, primary_key=True)
-    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=False)
+    contrato_id = db.Column(db.Integer, db.ForeignKey('contratos.id'), nullable=True)
+    contrato_referencia = db.Column(db.String(50))  # nº do contrato digitado quando não há vínculo
     numero_processo = db.Column(db.String(50), index=True)
     formalizacao_cessao_autos = db.Column(db.String(100))
     andamentos = db.Column(db.Text)
@@ -167,6 +197,7 @@ class Processo(db.Model):
         return {
             'id': self.id,
             'contrato_id': self.contrato_id,
+            'contrato_referencia': self.contrato_referencia,
             'numero_processo': self.numero_processo,
             'formalizacao_cessao_autos': self.formalizacao_cessao_autos,
             'andamentos': self.andamentos,
